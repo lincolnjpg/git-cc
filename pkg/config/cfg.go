@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -11,6 +12,9 @@ import (
 	"github.com/muesli/termenv"
 	"github.com/spf13/viper"
 )
+
+const emptyScopeTemplate = "scopes:\n%s"
+const newScopeTemplate = "  %s: description of what short-form \"%s\" represents\n"
 
 const ExampleCfgFileHeader = `## commit_convention.yml
 ## omit the commit_types to use the default angular-style commit types`
@@ -153,7 +157,7 @@ func GetCommitMessageFile() string {
 }
 
 // interactively edit the config file, if any was used.
-func EditCfgFile(cfg *viper.Viper, defaultFileContent string) Cfg {
+func EditCfgFile(cfg *viper.Viper, newContent string) Cfg {
 	editCmd := []string{}
 	// sometimes $EDITOR can be a script with spaces, like `code --wait`
 	for _, part := range strings.Split(GetEditor(), " ") {
@@ -165,24 +169,34 @@ func EditCfgFile(cfg *viper.Viper, defaultFileContent string) Cfg {
 	if cfgFile == "" {
 		cfgFile = "commit_convention.yml" // TODO: verify that this is the correct location (i.e. the cwd or a parent directory)?
 	}
-	/*
-		var f *os.File
-		f, err := os.Open(cfgFile)
-		if err != nil {
-			f, err = os.Create(cfgFile)
-			if err != nil {
-				log.Fatalf("unable to create file %s: %+v", cfgFile, err)
-			}
-			defer f.Close()
-		}
-		defer f.Close()
-	*/
-	f, err := os.OpenFile(cfgFile, os.O_RDWR|os.O_CREATE, 0664)
+	var f *os.File
+	f, err := os.OpenFile(cfgFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
 	if err != nil {
-		log.Fatalf("unable to create file %s: %+v", cfgFile, err)
+		log.Fatalf("unable to open file %s: %+v", cfgFile, err)
 	}
 	defer f.Close()
-	_, err = f.WriteString(defaultFileContent)
+	contentBytes, err := os.ReadFile(cfgFile)
+	if err != nil {
+		log.Fatalf("unable to read file %s: %+v", cfgFile, err)
+	}
+	var fileContent string
+	if len(contentBytes) <= 0 {
+		fileContent = ExampleCfgFileHeader + ExampleCfgFileCommitTypes + "\n" + fmt.Sprintf(
+			emptyScopeTemplate,
+			fmt.Sprintf(
+				newScopeTemplate,
+				newContent,
+				newContent,
+			),
+		)
+	} else {
+		fileContent = string(contentBytes) + fmt.Sprintf(
+			newScopeTemplate,
+			newContent,
+			newContent,
+		)
+	}
+	err = os.WriteFile(cfgFile, []byte(fileContent), 0664)
 	if err != nil {
 		log.Fatalf("unable to write to file: %v", err)
 	}

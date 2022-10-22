@@ -1,7 +1,6 @@
 package scope_selector
 
 import (
-	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,9 +9,6 @@ import (
 	"github.com/skalt/git-cc/pkg/parser"
 	"github.com/skalt/git-cc/pkg/single_select"
 )
-
-const emptyScopeTemplate = "scopes:\n%s\n"
-const newScopeTemplate = "  %s: description of what short-form \"%s\" represents"
 
 type Model struct {
 	input   single_select.Model
@@ -92,10 +88,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				newScope := m.input.CurrentInput()
 				cfg := config.EditCfgFile(
 					config.CentralStore,
-					config.ExampleCfgFileHeader+config.ExampleCfgFileCommitTypes+"\n"+fmt.Sprintf(
-						emptyScopeTemplate,
-						fmt.Sprintf(newScopeTemplate, newScope, newScope),
-					),
+					newScope,
 				)
 				values, hints := makeOptHintPair(makeOptions(cfg.Scopes))
 				m.input.Options = values
