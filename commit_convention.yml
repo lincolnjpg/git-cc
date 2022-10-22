@@ -1,11 +1,6 @@
-# not present: commit_types: using the default angular-style commit types 
-# they would look like this though:
+## commit_convention.yml
+## omit the commit_types to use the default angular-style commit types
 # commit_types:
-#  - type: description of what the short-form "type" means
+#   - type: description of what the short-form "type" means
 scopes:
-  # Array<{[key: string]: string}> defines both the order of scopes (nice for
-  # keeping the most frequently used scopes/types on top, and requires
-  # explanation of each commit_type/scope.
-  - parser: parses conventional commits
-  - cli: UI for command-line invocation
-  - dist: the release; means of distribution
+  ccceere: description of what short-form "ccceere" represents

@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -165,14 +164,27 @@ func EditCfgFile(cfg *viper.Viper, defaultFileContent string) Cfg {
 	cfgFile := cfg.ConfigFileUsed()
 	if cfgFile == "" {
 		cfgFile = "commit_convention.yml" // TODO: verify that this is the correct location (i.e. the cwd or a parent directory)?
-		f, err := os.Create(cfgFile)
+	}
+	/*
+		var f *os.File
+		f, err := os.Open(cfgFile)
 		if err != nil {
-			log.Fatalf("unable to create file %s: %+v", cfgFile, err)
+			f, err = os.Create(cfgFile)
+			if err != nil {
+				log.Fatalf("unable to create file %s: %+v", cfgFile, err)
+			}
+			defer f.Close()
 		}
-		_, err = f.WriteString(fmt.Sprintf(defaultFileContent))
-		if err != nil {
-			log.Fatalf("unable to write to file: %v", err)
-		}
+		defer f.Close()
+	*/
+	f, err := os.OpenFile(cfgFile, os.O_RDWR|os.O_CREATE, 0664)
+	if err != nil {
+		log.Fatalf("unable to create file %s: %+v", cfgFile, err)
+	}
+	defer f.Close()
+	_, err = f.WriteString(defaultFileContent)
+	if err != nil {
+		log.Fatalf("unable to write to file: %v", err)
 	}
 	editCmd = append(editCmd, cfgFile)
 	cmd := exec.Command(editCmd[0], editCmd[1:]...)
