@@ -11,10 +11,12 @@ import (
 
 	"github.com/muesli/termenv"
 	"github.com/spf13/viper"
+	yaml "gopkg.in/yaml.v3"
 )
 
-const emptyScopeTemplate = "scopes:\n%s"
-const newScopeTemplate = "  %s: description of what short-form \"%s\" represents\n"
+// const emptyScopeTemplate = "scopes:\n%s"
+// const newScopeTemplate = "  %s: description of what short-form \"%s\" represents\n"
+const newScopeTemplate = "  - %s: description of what short-form \"%s\" represents\n"
 
 const ExampleCfgFileHeader = `## commit_convention.yml
 ## omit the commit_types to use the default angular-style commit types`
@@ -179,24 +181,78 @@ func EditCfgFile(cfg *viper.Viper, newContent string) Cfg {
 	if err != nil {
 		log.Fatalf("unable to read file %s: %+v", cfgFile, err)
 	}
-	var fileContent string
-	if len(contentBytes) <= 0 {
-		fileContent = ExampleCfgFileHeader + ExampleCfgFileCommitTypes + "\n" + fmt.Sprintf(
-			emptyScopeTemplate,
-			fmt.Sprintf(
-				newScopeTemplate,
-				newContent,
-				newContent,
-			),
-		)
+	var fileData []byte
+	if len(contentBytes) > 0 {
+		var node yaml.Node
+		err = yaml.Unmarshal(contentBytes, &node)
+		if err != nil {
+			fmt.Println(err)
+		}
+		line := node.Content[0].Content[1].Content[len(node.Content[0].Content[1].Content)-1].Line
+		var newNode yaml.Node = yaml.Node{
+			Kind:   yaml.MappingNode,
+			Tag:    "!!map",
+			Column: 3,
+			Line:   line,
+			Content: []*yaml.Node{
+				{
+					Kind:   yaml.ScalarNode,
+					Tag:    "!!str",
+					Value:  newContent,
+					Line:   line,
+					Column: 5,
+				},
+				{
+					Kind:   yaml.ScalarNode,
+					Tag:    "!!str",
+					Value:  newContent,
+					Line:   line,
+					Column: 5 + len(newContent) + len(": "),
+				},
+			},
+		}
+		node.Content[0].Content[1].Content = append(node.Content[0].Content[1].Content, &newNode)
+		/*
+			var fileContent string
+			if len(contentBytes) <= 0 {
+				fileContent = ExampleCfgFileHeader + ExampleCfgFileCommitTypes + "\n" + fmt.Sprintf(
+					emptyScopeTemplate,
+					fmt.Sprintf(
+						newScopeTemplate,
+						newContent,
+						newContent,
+					),
+				)
+			} else {
+				fileContent = string(contentBytes) + fmt.Sprintf(
+					newScopeTemplate,
+					newContent,
+					newContent,
+				)
+			}
+			err = os.WriteFile(cfgFile, []byte(fileContent), 0664)
+		*/
+		fileData, err = yaml.Marshal(&node)
+		if err != nil {
+			fmt.Println(err)
+		}
 	} else {
-		fileContent = string(contentBytes) + fmt.Sprintf(
+		//inicia com exemplo de yaml
+		fileData = []byte(ExampleCfgFileHeader + ExampleCfgFileCommitTypes + "\n" + ExampleCfgFileScopes + "\n" + fmt.Sprintf(
 			newScopeTemplate,
 			newContent,
 			newContent,
-		)
+		))
+
+		var node yaml.Node
+		err = yaml.Unmarshal(fileData, &node)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
-	err = os.WriteFile(cfgFile, []byte(fileContent), 0664)
+
+	fmt.Println("FILEDATA:", string(fileData))
+	err = os.WriteFile(cfgFile, fileData, 0664)
 	if err != nil {
 		log.Fatalf("unable to write to file: %v", err)
 	}
