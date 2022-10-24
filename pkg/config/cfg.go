@@ -130,7 +130,14 @@ func GetEditor() string {
 	if editor != "" {
 		return editor
 	}
-	return "vi"
+	fbEditor := "vi"
+	_, err := exec.LookPath(fbEditor)
+	if err != nil {
+		msg := "unable to open the fallback editor"
+		hint := "hint: set the env variable EDITOR or install vi"
+		log.Fatalf(fmt.Sprintf("%s: %q\n%s", msg, fbEditor, hint))
+	}
+	return fbEditor
 }
 
 // search GIT_EDITOR, then fall back to $EDITOR
@@ -153,15 +160,23 @@ func GetCommitMessageFile() string {
 	)
 }
 
+func GetTerminal() string {
+	terminal := os.Getenv("GITCC_TERMINAL")
+	if terminal != "" {
+		return terminal
+	}
+	fbTerminal := "xterm"
+	_, err := exec.LookPath(fbTerminal)
+	if err != nil {
+		msg := "unable to open the fallback terminal"
+		hint := "hint: set the env variable GITCC_TERMINAL or install xterm"
+		log.Fatalf(fmt.Sprintf("%s: %q\n%s", msg, fbTerminal, hint))
+	}
+	return fbTerminal
+}
+
 // interactively edit the config file, if any was used.
 func EditCfgFile(cfg *viper.Viper, defaultFileContent string) Cfg {
-	editCmd := []string{}
-	// sometimes $EDITOR can be a script with spaces, like `code --wait`
-	for _, part := range strings.Split(GetEditor(), " ") {
-		if part != "" {
-			editCmd = append(editCmd, part)
-		}
-	}
 	cfgFile := cfg.ConfigFileUsed()
 	if cfgFile == "" {
 		cfgFile = "commit_convention.yml" // TODO: verify that this is the correct location (i.e. the cwd or a parent directory)?
@@ -174,8 +189,8 @@ func EditCfgFile(cfg *viper.Viper, defaultFileContent string) Cfg {
 			log.Fatalf("unable to write to file: %v", err)
 		}
 	}
-	editCmd = append(editCmd, cfgFile)
-	cmd := exec.Command(editCmd[0], editCmd[1:]...)
+	cmd := exec.Command(GetTerminal(), "-e", GetEditor()+" "+cfgFile)
+	fmt.Println(cmd)
 	cmd.Stdin, cmd.Stdout = os.Stdin, os.Stderr
 	cmd.Run() // ignore errors
 	return Lookup(cfg)
